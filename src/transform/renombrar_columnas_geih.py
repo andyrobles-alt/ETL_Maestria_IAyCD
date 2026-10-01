@@ -1,8 +1,5 @@
-"""Nombres legibles para los CSV GEIH 2025 de características generales y ocupados.
-
-Fuente: hoja «Diccionario» del archivo suministrado por el proyecto.
-Solo cambia encabezados; los datos y códigos de respuesta permanecen iguales.
-Si se unirán módulos mediante sus llaves originales, aplicar después de unir.
+"""
+Nombres legibles para los CSV GEIH 2025 de características generales y ocupados.
 """
 
 # Cada clave es el nombre original de una columna en los CSV suministrados.
@@ -199,7 +196,6 @@ NOMBRES_GEIH = {
     "RAMA4D_R4": "Rama_Act_Empleo_Ppal_4_Digitos",
     "OFICIO_C8": "Oficio_Clasificado",
 }
-
 
 def renombrar_columnas_geih(df):
     """Devuelve una copia del DataFrame con encabezados legibles y únicos."""

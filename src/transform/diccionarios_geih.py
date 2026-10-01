@@ -1,29 +1,9 @@
-"""Traducción de códigos GEIH para una copia de presentación del DataFrame.
-
-Fuente: Diccionario_GEIH_2025_con_revision_objetivos_revisado_por_IA_V2_completado.xlsm
-Hoja Diccionario, columna «Dominio de categorías». Las referencias de esa
-columna se resuelven en Dominios y CIIU manufactura del mismo archivo.
-Las etiquetas se conservan tal como aparecen en el Excel.
-
-Uso en tu script (guarda este archivo en la misma carpeta):
-    from diccionarios_geih import traducir_geih
-    df_legible, sin_equivalencia = traducir_geih(df_filtrado)
-    print(df_legible.head())
-    print(sin_equivalencia)
-    df_legible.to_csv("GEIH_filtrado_legible.csv", sep=";",
-                      index=False, encoding="utf-8-sig")
-
-Acepta nombres originales o los nombres renombrados indicados por el usuario.
-El DataFrame de entrada no se modifica. La copia sirve para lectura y exportación;
-usa la base con códigos para uniones, filtros y análisis reproducibles.
-Los códigos sin etiqueta y los faltantes conservan su valor original.
-SECUENCIA_P, ORDEN y HOGAR son identificadores y conservan sus números.
-No se completa ninguna equivalencia con fuentes externas.
+"""
+Traducción de códigos GEIH para una copia de presentación del DataFrame.
 """
 
 import re
 import pandas as pd
-
 
 NOMBRES_COLUMNAS = {
     'SECUENCIA_P': 'SECUENCIA_P',
@@ -42,7 +22,6 @@ NOMBRES_COLUMNAS = {
     'RAMA2D_R4': 'Rama_Act_Empleo_Ppal',
     'P3044S2': 'Productos_Comercializados',
 }
-
 # Diccionarios con claves de texto normalizadas.
 DICCIONARIOS = {
     # Identificador: el Excel no define categorías para este campo.
@@ -224,7 +203,6 @@ DICCIONARIOS = {
 
 IDENTIFICADORES = {"SECUENCIA_P", "ORDEN", "HOGAR"}
 
-
 def normalizar_codigo(valor):
     """Iguala 1, '1', '01' y 1.0 solo para buscar la etiqueta."""
     if pd.isna(valor):
@@ -235,7 +213,6 @@ def normalizar_codigo(valor):
     if re.fullmatch(r"[0-9]+(?:[.,]0+)?", texto):
         return str(int(re.split(r"[.,]", texto)[0]))
     return texto
-
 
 def traducir_geih(df):
     """Devuelve (copia legible, reporte de valores sin equivalencia).
@@ -284,8 +261,3 @@ def traducir_geih(df):
     ])
     return salida,reporte
 
-
-if __name__ == "__main__":
-    print("Importa este módulo desde el script donde tienes df_filtrado:")
-    print("from diccionarios_geih import traducir_geih")
-    print("df_legible, sin_equivalencia = traducir_geih(df_filtrado)")

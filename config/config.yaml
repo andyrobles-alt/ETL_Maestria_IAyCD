@@ -1,14 +1,13 @@
 project: 
-  name: "proyecto_final"
+  name: "proyecto_final ETL"
   version: "1.0"
-  author: "Carlos Andrés Agredo Robles"
-
+  author: "Carlos Andrés Agredo Robles/Juan Andres Gutierrez/ Camilo Ernesto Balanta"
 
 paths:
-  bronze_dir: "C:\\Users\\andyr\\Desktop\\Maestria\\ETL\\2. Proyecto final\\Entrega 2\\2. Proyecto final\\entrega2pfmedallon\\data\\bronze"
-  silver_dir: "C:\\Users\\andyr\\Desktop\\Maestria\\ETL\\2. Proyecto final\\Entrega 2\\2. Proyecto final\\entrega2pfmedallon\\data\\silver"
-  gold_dir: "C:\\Users\\andyr\\Desktop\\Maestria\\ETL\\2. Proyecto final\\Entrega 2\\2. Proyecto final\\entrega2pfmedallon\\data\\gold"
-  #reports_dir: "C:\\Users\\forma_u\\Documents\\conexionetl\\reports"
+  bronze_dir: "data/bronze"
+  silver_dir: "data/silver"
+  gold_dir: "data/gold"
+  # reports_dir: "reports"
 
 source:
 
@@ -33,6 +32,5 @@ source:
   csv_salida_datasets_unidos: "df_unidos.csv"
   excel_salida_datasets_traducido: "df_traducido.xlsx"
   excel_salida_datasets_traducido_clean: "df_traducido_clean.xlsx"
-constants:
-  numero_pi : 3.141592653589793
+
 

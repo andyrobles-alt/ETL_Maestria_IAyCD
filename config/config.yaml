@@ -1,0 +1,36 @@
+project: 
+  name: "proyecto_final ETL"
+  version: "1.0"
+  author: "Carlos Andrés Agredo Robles/Juan Andres Gutierrez/ Camilo Ernesto Balanta"
+
+paths:
+  bronze_dir: "data/bronze"
+  silver_dir: "data/silver"
+  gold_dir: "data/gold"
+  # reports_dir: "reports"
+
+source:
+
+  caracteristicas_generales_dic: "caracteristicasgenerales_dic.csv"
+  ocupados_dic: "ocupados_dic.csv"
+
+  caracteristicas_generales_nov: "caracteristicasgenerales_nov.csv"
+  ocupados_nov: "ocupados_nov.csv"
+
+  caracteristicas_generales_oct: "caracteristicasgenerales_oct.csv"
+  ocupados_oct: "ocupados_oct.csv"
+
+  csv_salida_cg: "caracteristicasgenerales_trimestre.csv"
+  csv_salida_ocupados: "ocupados_trimestre.csv"
+
+  csv_salida_cg_sinrenombrar: "caracteristicasgenerales_trimestre_sinrenombrar.csv"
+  csv_salida_ocupados_sinrenombrar: "ocupados_trimestre_filtrado_sinrenombrar.csv"
+
+  csv_salida_cg_transformado: "caracteristicasgenerales_transformado.csv"
+  csv_salida_ocupados_transformado: "ocupados_trimestre_transformado.csv"
+
+  csv_salida_datasets_unidos: "df_unidos.csv"
+  excel_salida_datasets_traducido: "df_traducido.xlsx"
+  excel_salida_datasets_traducido_clean: "df_traducido_clean.xlsx"
+
+

@@ -26,8 +26,7 @@ def clean(df: pd.DataFrame, nombre_df: str)->pd.DataFrame:
     # Se renombran las columnas
     df_data = renombrar_columnas_geih(data)
     #Eliminar duplicados
-    print("clean_csv: Eliminar duplicados")
-    df_data.dropna()
+    df_data.drop_duplicates(subset=["Anio_Encuesta", "Mes_Encuesta", "Id_Vivienda", "Id_Hogar", "Orden_Persona"], keep = 'first', inplace=True, ignore_index = True)
     return df_data
 
 def join_datasets(dfs: list[pd.DataFrame], claves: list[str]) -> pd.DataFrame:
@@ -61,13 +60,12 @@ def join_datasets(dfs: list[pd.DataFrame], claves: list[str]) -> pd.DataFrame:
             )
         resultado = resultado.drop(columns="_merge")
     return resultado
-
-
+#Se reemplazan los valores por los valores de los diccionarios creados
 def traslation_values(df: pd.DataFrame) -> pd.DataFrame:
     print("traslation_values: Renombrar valores de las columnas")
     df_traducido,reporte = traducir_geih(df)
     return df_traducido
-
+#Limpieza del dataset final
 def clean_values(df: pd.DataFrame) -> pd.DataFrame:
     print("clean_values: Limpieza del dataset final")
     data = df.copy()
@@ -121,3 +119,131 @@ def respuestas_OKRs_KPIs(df_caracteristicas_generales_copia,df_ocupados_copia,df
     print("**********Verificar que Ocupados y el final tengan exactamente las mismas personas-mes**********")
     comparacion = df_ocupados_copia[claves_de_union].merge(final_claves[claves_de_union], on=claves_de_union, how='outer', validate='one_to_one', indicator=True)
     print(comparacion['_merge'].value_counts())
+
+def previsualizar_kpis(
+    df_KPIs: pd.DataFrame,
+    ruta_salida: str = "data/gold/previsualizacion_KPIs.xlsx"
+) -> str:
+    import matplotlib.pyplot as plt
+    from openpyxl.drawing.image import Image
+    from pathlib import Path
+    from io import BytesIO
+
+    print("previsualizar_kpis: Generando reporte Excel")
+
+    # Copia para preparar las etiquetas sin modificar los datos originales
+    data = df_KPIs.copy()
+    data['Grupo'] = (
+        data['Rama_Act_Empleo_Ppal']
+        .fillna('Sin rama')
+        .replace({'otras ramas': 'Otros sectores'})
+        .astype(str)
+        + '\n'
+        + data['Categoria_Trabajo']
+        .fillna('Sin categoría')
+        .replace({'Trabajador por cuenta propia': 'Cuenta propia'})
+        .astype(str)
+    )
+
+    # Columna, hoja, título, unidad, cálculo y explicación
+    indicadores = [
+        (
+            'Proporcion_55+', 'Proporcion_55',
+            'Peso de los trabajadores de 55 años o más',
+            'Porcentaje del grupo',
+            'Cálculo: Σ FEX (55+) / Σ FEX (grupo) × 100',
+            'Cada barra indica qué porcentaje del grupo tiene 55 años o más.'
+        ),
+        (
+            'Razon_Reemplazo', 'Razon_Reemplazo',
+            'Jóvenes por cada trabajador de 55 años o más',
+            'Jóvenes de 18–34 por trabajador de 55+',
+            'Cálculo: Σ FEX (18–34) / Σ FEX (55+)',
+            'La línea roja en 1 indica igual peso de jóvenes y trabajadores de 55+.'
+        ),
+        (
+            'Edad_Mediana', 'Edad_Mediana',
+            'Edad central de cada grupo',
+            'Edad mediana ponderada (años)',
+            'Cálculo: primera edad cuyo FEX acumulado alcanza el 50 % del grupo',
+            'La mediana resume la edad central teniendo en cuenta los factores de expansión.'
+        )
+    ]
+
+    ruta = Path(ruta_salida)
+    ruta.parent.mkdir(parents=True, exist_ok=True)
+    imagenes = []
+
+    with pd.ExcelWriter(ruta, engine='openpyxl') as writer:
+        # Conservar todas las filas y columnas originales
+        df_KPIs.to_excel(writer, sheet_name='Datos_KPI', index=False)
+
+        for columna, hoja_nombre, titulo, unidad, calculo, lectura in indicadores:
+            data[columna] = (
+                pd.to_numeric(data[columna], errors='coerce')
+                .replace([float('inf'), -float('inf')], float('nan'))
+            )
+            validos = data.dropna(subset=[columna]).sort_values(columna)
+
+            hoja = writer.book.create_sheet(hoja_nombre)
+            hoja['A1'] = titulo
+            hoja['A2'] = calculo
+            hoja['A3'] = lectura
+
+            if validos.empty:
+                hoja['A5'] = 'No hay valores válidos para graficar este indicador.'
+                continue
+
+            fig, ax = plt.subplots(figsize=(12, 6))
+            barras = ax.barh(
+                validos['Grupo'], validos[columna],
+                color='#2878B5', height=0.55
+            )
+
+            # Los valores incluyen la unidad para facilitar su lectura
+            if columna == 'Proporcion_55+':
+                etiquetas = [f'{valor:.1f}%' for valor in validos[columna]]
+                ax.set_xlim(0, 100)
+            elif columna == 'Edad_Mediana':
+                etiquetas = [f'{valor:.1f} años' for valor in validos[columna]]
+                ax.set_xlim(0, validos[columna].max() * 1.3 + 1)
+            else:
+                etiquetas = [f'{valor:.2f}' for valor in validos[columna]]
+                ax.set_xlim(0, max(1.3, validos[columna].max() * 1.3))
+                ax.axvline(1, color='#C44E52', linestyle='--', linewidth=2)
+
+            ax.bar_label(barras, labels=etiquetas, padding=5, fontsize=11)
+            ax.set_xlabel(unidad)
+            ax.set_ylabel('Sector y categoría laboral')
+            ax.set_title(
+                'Cali A.M. · Octubre–diciembre de 2025\n'
+                f'{len(validos)} de {len(data)} grupos con valores válidos',
+                fontsize=10
+            )
+            ax.grid(axis='x', alpha=0.2)
+            ax.set_axisbelow(True)
+
+            fig.suptitle(titulo, fontsize=15, fontweight='bold')
+            fig.text(
+                0.02, 0.02,
+                f'{lectura}\n{calculo}\n'
+                'FEX: factor de expansión. Grupos según la clasificación actual de Gold.',
+                fontsize=9
+            )
+            fig.tight_layout(rect=[0, 0.15, 1, 0.93])
+
+            # Insertar el gráfico directamente en el Excel
+            imagen = BytesIO()
+            fig.savefig(imagen, format='png', dpi=120)
+            plt.close(fig)
+            imagen.seek(0)
+            imagenes.append(imagen)
+
+            hoja.add_image(Image(imagen), 'A5')
+            hoja.sheet_view.showGridLines = False
+
+    for imagen in imagenes:
+        imagen.close()
+
+    print(f'previsualizar_kpis: Reporte guardado en {ruta}')
+    return str(ruta)

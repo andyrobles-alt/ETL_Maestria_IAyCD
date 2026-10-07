@@ -1,1 +1,25 @@
+#Ambiente virtual y copian del main inicial
 /main copy.py
+/.venv/
+/venv
+
+#Archivos de cache
+__pycache__
+/.pytest_cache/
+/.mypy_cache/
+/.ruff_cache/
+/.coverage
+/.coverage.*
+/.htmlcov/
+/coverage.xml
+
+#Archivos con informacion sensible
+/.env
+
+#Datasets: Solo de dejaran los de capa bronze.
+/data/silver/
+/data/gold/
+/logs
+
+#Copias de notebook
+.ipynb_checkpoints/

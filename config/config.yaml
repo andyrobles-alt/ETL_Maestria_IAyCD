@@ -7,10 +7,11 @@ paths:
   bronze_dir: "data/bronze"
   silver_dir: "data/silver"
   gold_dir: "data/gold"
+  logs: logs
   # reports_dir: "reports"
 
 source:
-
+  #Usados para extraccion
   caracteristicas_generales_dic: "caracteristicasgenerales_dic.csv"
   ocupados_dic: "ocupados_dic.csv"
 
@@ -20,17 +21,17 @@ source:
   caracteristicas_generales_oct: "caracteristicasgenerales_oct.csv"
   ocupados_oct: "ocupados_oct.csv"
 
-  csv_salida_cg: "caracteristicasgenerales_trimestre.csv"
-  csv_salida_ocupados: "ocupados_trimestre.csv"
-
-  csv_salida_cg_sinrenombrar: "caracteristicasgenerales_trimestre_sinrenombrar.csv"
-  csv_salida_ocupados_sinrenombrar: "ocupados_trimestre_filtrado_sinrenombrar.csv"
-
+  #Usados para transformacion
   csv_salida_cg_transformado: "caracteristicasgenerales_transformado.csv"
   csv_salida_ocupados_transformado: "ocupados_trimestre_transformado.csv"
-
-  csv_salida_datasets_unidos: "df_unidos.csv"
-  excel_salida_datasets_traducido: "df_traducido.xlsx"
   excel_salida_datasets_traducido_clean: "df_traducido_clean.xlsx"
+  #Usados para datos de negocio
+  
+  excel_salida_gold_data_Cali: "df_gold_data_Cali.xlsx"
+  excel_salida_gold_data_KPIs: "df_gold_data_KPIs.xlsx"
 
+  #Usado para logs de ETL
+  logs_file: "logs.txt"
 
+  #Usado para previsualizacion
+  previsualizacion_KPIs: "previsualizacion_KPIs.xlsx"

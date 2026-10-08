@@ -97,8 +97,8 @@ def main():
     #--------------------
     with open(f"{config['paths']['logs']}/{config['source']['logs_file']}", "a",encoding='utf-8') as log_file:
         log_file.write(f"{dt.datetime.now()} INFO: Carga de datos iniciada\n ")
-    #load_database.carga_datos(df_kpis,"df_kpis")
-    #load_database.carga_datos(df_gold_data_Cali,"df_gold_data_Cali")
+    load_database.carga_datos(df_kpis,"df_kpis")
+    load_database.carga_datos(df_gold_data_Cali,"df_gold_data_Cali")
     with open(f"{config['paths']['logs']}/{config['source']['logs_file']}", "a",encoding='utf-8') as log_file:
         log_file.write(f"{dt.datetime.now()} INFO: Extraccion de datos completada\n ")
 

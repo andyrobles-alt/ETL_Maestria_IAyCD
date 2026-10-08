@@ -1,6 +1,6 @@
 # ETL_Maestria_IAyCD
 
-Pipeline ETL para analizar el relevo generacional en el empleo manufacturero con la Gran Encuesta Integrada de Hogares (GEIH) de octubre, noviembre y diciembre de 2025. Utiliza una arquitectura medallón: **Bronze → Silver → Gold → PostgreSQL/Supabase**.
+Pipeline ETL para analizar el relevo generacional en el empleo manufacturero con la Gran Encuesta Integrada de Hogares (GEIH) de octubre, noviembre y diciembre de 2025. Utiliza una arquitectura medallón: **Bronze → Silver → Gold**, genera un reporte Excel con los KPI y sus gráficos, y dispone de carga a **PostgreSQL/Supabase**. Las llamadas de carga están habilitadas en `main.py`, por lo que la ejecución completa requiere una conexión PostgreSQL válida.
 
 **Estado del alcance:** el objetivo del proyecto es estudiar el municipio de Cali. El código actual filtra **Cali A.M.**, y los notebooks documentan que los insumos públicos no permiten separar Cali de Yumbo. Los resultados actuales son un prototipo metropolitano; el resultado municipal requiere incorporar y validar un identificador de municipio.
 
@@ -103,7 +103,8 @@ Si un grupo no tiene peso en personas de 55+, la razón de reemplazo queda indef
 1. **Bronze / extracción:** lee los tres CSV de cada módulo y los concatena en un DataFrame por módulo.
 2. **Silver / transformación:** selecciona y renombra columnas, elimina claves duplicadas conservando la primera fila, integra los módulos, traduce códigos y estandariza valores. Convierte edad e ingreso a valores numéricos; los ingresos nulos se conservan.
 3. **Gold / indicadores:** selecciona Cali A.M. y calcula los tres KPI por sector y categoría ocupacional.
-4. **Carga:** crea las tablas de destino si no existen e inserta los datos de Gold en PostgreSQL, incluido un destino Supabase con conexión PostgreSQL.
+4. **Previsualización:** lee el Excel de KPI y genera un segundo Excel que conserva los datos originales e incorpora gráficos explicativos.
+5. **Carga:** después de generar el reporte, `main.py` llama a `load_database.carga_datos` para insertar los KPI y la tabla curada de Cali A.M. en PostgreSQL/Supabase. El módulo crea las tablas de destino si no existen.
 
 Los mapas de nombres y categorías están en [renombrar_columnas_geih.py](src/transform/renombrar_columnas_geih.py) y [diccionarios_geih.py](src/transform/diccionarios_geih.py).
 
@@ -113,7 +114,7 @@ Ejecuta los comandos desde la **raíz del repositorio**, donde están `main.py` 
 
 ### 5.1. Preparar Python
 
-El entorno local del proyecto utiliza **Python 3.14**. Necesitas Python, los seis CSV y una base PostgreSQL para ejecutar también la carga.
+El entorno local del proyecto utiliza **Python 3.14**. Para ejecutar `main.py` completo necesitas Python, los seis CSV, una base PostgreSQL accesible y la variable `DATABASE_URL` configurada.
 
 Crea un entorno virtual e instala las dependencias:
 
@@ -123,7 +124,7 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install pytest
 ```
 
-`pytest` se instala por separado porque no está declarado en el `requirements.txt` actual. Los comandos usan directamente el Python del entorno; no es necesario activarlo.
+`pytest` se instala por separado porque aún no está declarado en el `requirements.txt` actual. El reporte Excel utiliza `pandas`, `matplotlib`, `openpyxl` y `Pillow`, que ya están incluidos en ese archivo. `pathlib` e `io` forman parte de Python. Los comandos usan directamente el Python del entorno; no es necesario activarlo. Si ya tienes un entorno llamado `venv`, sustituye `.venv` por `venv` en los comandos.
 
 ### 5.2. Preparar los datos y las carpetas
 
@@ -139,7 +140,7 @@ Este paso es necesario después de clonar: esas carpetas están ignoradas por Gi
 
 ### 5.3. Configurar PostgreSQL o Supabase
 
-Crea un archivo llamado `.env` en la raíz del proyecto, con la variable que lee [load_database.py](src/load/load_database.py):
+La carga está habilitada y requiere una conexión válida. Crea un archivo llamado `.env` en la raíz del proyecto con la variable que lee [load_database.py](src/load/load_database.py), o define `DATABASE_URL` en el entorno de ejecución:
 
 ```dotenv
 DATABASE_URL="postgresql://USUARIO:CONTRASENA@HOST:5432/BASE_DE_DATOS"
@@ -149,15 +150,30 @@ Reemplaza los valores de ejemplo por los de tu base. Para Supabase, utiliza la c
 
 `.env` contiene configuración privada y está incluido en `.gitignore`. Cada persona que clone el repositorio debe crear su propia configuración local.
 
+### 5.4. Revisar la configuración del reporte
+
+[config/config.yaml](config/config.yaml) define las rutas y los nombres de los archivos. El reporte utiliza estas claves, ya presentes en la configuración actual:
+
+```yaml
+paths:
+  gold_dir: "data/gold"
+
+source:
+  excel_salida_gold_data_KPIs: "df_gold_data_KPIs.xlsx"
+  previsualizacion_KPIs: "previsualizacion_KPIs.xlsx"
+```
+
+Este bloque es un fragmento de la configuración: conserva las demás claves de entradas, salidas y logs. `main.py` construye las rutas combinando `paths.gold_dir` con cada nombre de `source`. El archivo de KPI y el reporte deben tener nombres diferentes, porque el reporte se guarda como un nuevo archivo.
+
 ## 6. Ejecutar el pipeline
 
-Con los datos, las carpetas y la conexión preparados:
+Con el entorno, los datos, las carpetas y la conexión PostgreSQL preparados:
 
 ```powershell
 .\.venv\Scripts\python.exe main.py
 ```
 
-`main.py` ejecuta extracción, transformación, generación de Gold y carga. Actualmente no dispone de una opción de consola para omitir la base de datos.
+`main.py` ejecuta extracción, transformación, generación de Gold, el reporte Excel de previsualización y la carga a PostgreSQL, en ese orden. Las dos llamadas de carga están activas. No existe una opción de consola para omitir la base de datos. Los archivos locales se generan antes de intentar la conexión; su existencia no confirma que la carga haya finalizado.
 
 ### Archivos generados
 
@@ -170,13 +186,31 @@ Los nombres siguientes corresponden a la configuración actual:
 | Silver | `data/silver/df_traducido_clean.xlsx` | Tabla integrada, traducida y estandarizada. |
 | Gold | `data/gold/df_gold_data_Cali.xlsx` | Tabla curada del subconjunto de Cali A.M. |
 | Gold | `data/gold/df_gold_data_KPIs.xlsx` | Tres KPI por combinación de sector y categoría. |
+| Reporte | `data/gold/previsualizacion_KPIs.xlsx` | Datos originales del DataFrame de KPI y tres hojas con gráficos explicativos. |
 | Logs | `logs/logs.txt` | Fechas y mensajes de las etapas; se añaden al archivo existente. |
 
-En PostgreSQL se crean o utilizan las tablas **`df_kpis`** y **`df_gold_data_Cali`**. La carga agrega una clave técnica `id` autogenerada.
+### Reporte Excel de previsualización
 
-**Al repetir la ejecución:** los archivos de salida se sobrescriben y los registros se vuelven a insertar en la base. La carga actual no realiza actualización, reemplazo ni deduplicación de registros existentes; varias ejecuciones pueden duplicar los datos del destino. Para reproducir una carga inicial, utiliza una base de prueba con esas tablas aún sin datos.
+La función `previsualizar_kpis`, en [clean_csv.py](src/transform/clean_csv.py), recibe el DataFrame leído desde `df_gold_data_KPIs.xlsx` y la ruta del nuevo reporte. `main.py` la llama después de exportar Gold.
 
-Comprueba los archivos generados y el número de filas en las tablas. La función de carga captura e imprime algunos errores SQL, por lo que un mensaje final en el log no basta para confirmar que los datos se insertaron.
+| Hoja | Contenido |
+|---|---|
+| `Datos_KPI` | Todas las filas y columnas del DataFrame recibido, conservadas sin la limpieza utilizada para graficar. |
+| `Proporcion_55` | Barras del porcentaje ponderado de trabajadores de 55+ por sector y categoría. |
+| `Razon_Reemplazo` | Barras de jóvenes de 18–34 por trabajador de 55+, con una línea de referencia en 1. |
+| `Edad_Mediana` | Barras de la edad mediana ponderada de cada grupo, expresada en años. |
+
+Cada gráfico incluye valores, unidades, periodo, cobertura, cálculo y explicación. Las imágenes se insertan directamente en el Excel; no se generan PNG externos ni son gráficos nativos editables de Excel. La función trabaja con una copia para preparar las etiquetas y excluye valores no numéricos o infinitos únicamente de los gráficos; conserva los datos originales en `Datos_KPI`.
+
+El reporte compara KPI agregados por grupo; no muestra distribuciones individuales de edad o ingreso. El valor de 1 en la razón indica igual peso de jóvenes y mayores, no garantiza suficiencia del relevo. La visualización conserva las definiciones y limitaciones de Gold descritas en la sección 3.
+
+### Carga a PostgreSQL
+
+La ejecución crea o utiliza las tablas **`df_kpis`** y **`df_gold_data_Cali`**. La carga agrega una clave técnica `id` autogenerada.
+
+**Al repetir la ejecución:** los archivos de Silver, Gold y el reporte se sobrescriben, el log acumula mensajes y los registros se vuelven a insertar en la base. El módulo de carga no realiza actualización, reemplazo ni deduplicación de registros existentes. Varias ejecuciones pueden duplicar los datos del destino. Para reproducir una carga inicial, utiliza una base de prueba con esas tablas aún sin datos.
+
+Comprueba los archivos generados y el número de filas en las tablas de PostgreSQL. La función de carga captura e imprime algunos errores SQL, por lo que los mensajes de consola y del log deben contrastarse con los registros del destino para confirmar una inserción correcta.
 
 ## 7. Ejecutar las pruebas
 
@@ -186,7 +220,7 @@ Para ejecutar toda la suite:
 .\.venv\Scripts\python.exe -m pytest tests -q
 ```
 
-La suite completa requiere los CSV de Bronze y los productos de Silver y Gold, porque las pruebas de EDA leen esos archivos. Genera primero las salidas con el pipeline. Las pruebas actuales no llaman al módulo de carga ni validan una conexión PostgreSQL.
+La suite completa requiere los CSV de Bronze y los productos de Silver y Gold, porque las pruebas de EDA leen esos archivos. Genera primero las salidas con el pipeline. Las pruebas actuales no llaman al módulo de carga, no validan una conexión PostgreSQL ni verifican el contenido visual del reporte Excel.
 
 | Archivo | Qué revisa |
 |---|---|
@@ -220,7 +254,7 @@ Para recalcular y guardar sus salidas desde la consola:
 .\.venv\Scripts\python.exe scripts/execute_notebook.py notebooks/eda_transformacion_validado.ipynb --cwd .
 ```
 
-El comando ejecuta las celdas en un kernel limpio y **actualiza las salidas del archivo notebook**. No modifica los CSV ni los Excel de entrada. `main.py` no ejecuta automáticamente los notebooks ni exporta gráficos.
+El comando ejecuta las celdas en un kernel limpio y **actualiza las salidas del archivo notebook**. No modifica los CSV ni los Excel de entrada. `main.py` no ejecuta automáticamente los notebooks; sí genera el reporte Excel con gráficos de KPI descrito en la sección 6.
 
 Los notebooks presentan diagnósticos del tamaño de muestra y explican las limitaciones del piloto. Esos controles ayudan a interpretar los resultados, pero no equivalen a una evaluación de precisión del diseño muestral.
 
@@ -233,7 +267,10 @@ Los notebooks presentan diagnósticos del tamaño de muestra y explican las limi
 | No se puede escribir el log o un archivo de salida | Crea `logs/`, `data/silver/` y `data/gold/` antes de ejecutar. |
 | Aparece `ModuleNotFoundError` | Instala las dependencias con el mismo Python de `.venv` que utilizas para ejecutar. |
 | Pytest o el notebook no encuentra archivos de Silver/Gold | Genera previamente las salidas del pipeline. |
-| La conexión PostgreSQL falla | Revisa `DATABASE_URL`, credenciales, host, puerto y conectividad. |
+| Falta la clave `previsualizacion_KPIs` | Comprueba que exista dentro de `source` en `config/config.yaml`. |
+| Aparece `list indices must be integers or slices, not str` al construir la ruta | Usa `config['source']['previsualizacion_KPIs']`; `source` pertenece al diccionario `config`. |
+| No se puede sobrescribir el reporte Excel | Cierra `previsualizacion_KPIs.xlsx` en Excel y revisa los permisos de la carpeta. |
+| La conexión PostgreSQL falla | Revisa `DATABASE_URL`, credenciales, host, puerto y conectividad; la carga forma parte de la ejecución actual de `main.py`. |
 | La carga muestra un error SQL | Verifica permisos y compatibilidad del esquema de las tablas; revisa las filas insertadas. |
 | Gold y EDA presentan KPI distintos | Consulta sus diferencias de población y clasificación en la sección 3. |
 
@@ -241,7 +278,23 @@ Los notebooks presentan diagnósticos del tamaño de muestra y explican las limi
 
 El `.gitignore` actual excluye `.env`, los entornos virtuales, cachés, `logs/`, `data/silver/` y `data/gold/`. Los insumos de Bronze no están excluidos por esas reglas.
 
-Silver, Gold y logs se generan localmente. Si un archivo ya estaba versionado antes de añadirlo a `.gitignore`, la regla por sí sola no lo retira del seguimiento ni del historial de Git.
+Silver, Gold, el reporte de previsualización y los logs se generan localmente. `previsualizacion_KPIs.xlsx` queda excluido por la regla `/data/gold/`, mientras que `config/config.yaml`, `main.py`, `src/transform/clean_csv.py` y `requirements.txt` deben versionarse para que otra persona pueda reproducirlo. Si un archivo ya estaba versionado antes de añadirlo a `.gitignore`, la regla por sí sola no lo retira del seguimiento ni del historial de Git.
+
+### Comprobar si los cambios llegaron a GitHub
+
+Desde la raíz del repositorio, estos comandos permiten revisar los archivos pendientes y la configuración del último commit sin hacer un push:
+
+```powershell
+git status --short
+git diff HEAD -- README.md config/config.yaml main.py src/transform/clean_csv.py requirements.txt
+git show HEAD:config/config.yaml
+git rev-parse HEAD
+git ls-remote origin refs/heads/main
+```
+
+`git diff HEAD` muestra diferencias locales, tanto preparadas como sin preparar, frente al último commit. `git show` permite comprobar si ese commit incluye `source.previsualizacion_KPIs`. Si los hashes de los dos últimos comandos coinciden, el último commit local coincide con la rama `main` del remoto en ese momento; los cambios locales sin commit todavía no forman parte de ese resultado.
+
+La referencia local `origin/main` puede estar desactualizada: por sí sola no confirma el estado actual de GitHub. Los productos de Silver y Gold, el reporte y los logs no tienen que aparecer en el remoto para reproducir el pipeline, porque se regeneran al ejecutar el proyecto.
 
 ## Equipo
 
